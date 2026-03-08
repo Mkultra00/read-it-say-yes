@@ -3,16 +3,16 @@ import { BottomNav } from "./BottomNav";
 import pandaAvatar from "@/assets/panda-avatar.png";
 
 const floatingItems = [
-  { emoji: "🎵", delay: "0s", duration: "3s", left: "10%", size: "text-2xl" },
-  { emoji: "❤️", delay: "0.5s", duration: "3.5s", left: "85%", size: "text-xl" },
-  { emoji: "🎶", delay: "1s", duration: "2.8s", left: "25%", size: "text-3xl" },
-  { emoji: "💕", delay: "1.5s", duration: "3.2s", left: "75%", size: "text-2xl" },
-  { emoji: "♪", delay: "0.3s", duration: "3.8s", left: "50%", size: "text-xl" },
-  { emoji: "💗", delay: "2s", duration: "3s", left: "60%", size: "text-2xl" },
-  { emoji: "🎵", delay: "0.8s", duration: "2.5s", left: "35%", size: "text-xl" },
-  { emoji: "💖", delay: "1.2s", duration: "3.6s", left: "90%", size: "text-3xl" },
-  { emoji: "♫", delay: "1.8s", duration: "2.9s", left: "5%", size: "text-2xl" },
-  { emoji: "❤️", delay: "0.6s", duration: "3.3s", left: "45%", size: "text-xl" },
+  { emoji: "🎵", delay: "0s", duration: "3s", left: "10%", size: "text-5xl" },
+  { emoji: "❤️", delay: "0.5s", duration: "3.5s", left: "85%", size: "text-4xl" },
+  { emoji: "🎶", delay: "1s", duration: "2.8s", left: "25%", size: "text-6xl" },
+  { emoji: "💕", delay: "1.5s", duration: "3.2s", left: "75%", size: "text-5xl" },
+  { emoji: "♪", delay: "0.3s", duration: "3.8s", left: "50%", size: "text-4xl" },
+  { emoji: "💗", delay: "2s", duration: "3s", left: "60%", size: "text-5xl" },
+  { emoji: "🎵", delay: "0.8s", duration: "2.5s", left: "35%", size: "text-4xl" },
+  { emoji: "💖", delay: "1.2s", duration: "3.6s", left: "90%", size: "text-6xl" },
+  { emoji: "♫", delay: "1.8s", duration: "2.9s", left: "5%", size: "text-5xl" },
+  { emoji: "❤️", delay: "0.6s", duration: "3.3s", left: "45%", size: "text-4xl" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
