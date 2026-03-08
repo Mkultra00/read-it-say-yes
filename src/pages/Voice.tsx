@@ -133,6 +133,11 @@ const Voice = () => {
 
         <div className="text-center">
           <h2 className="font-serif text-xl text-foreground">Voice Session</h2>
+          {selectedVoice && (
+            <p className="text-xs text-primary font-medium mt-0.5">
+              Voice: {selectedVoice.name}
+            </p>
+          )}
           <p className="mt-1 text-sm text-muted-foreground">
             {status === "idle" && (testMode ? "Test mode — AI narration with realistic voice" : "Select a story and start narration")}
             {status === "generating" && "Crafting your narration..."}
