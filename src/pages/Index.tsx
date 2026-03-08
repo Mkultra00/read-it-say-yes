@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { useStories } from "@/hooks/useStories";
 import { StoryCard } from "@/components/StoryCard";
 import { VoiceSettings } from "@/components/VoiceSettings";
+import { PatientContextForm } from "@/components/PatientContextForm";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mic, Plus, Loader2 } from "lucide-react";
 
