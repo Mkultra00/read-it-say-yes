@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      patient_profiles: {
+        Row: {
+          city: string
+          created_at: string
+          family_members: string
+          id: string
+          memories: string
+          patient_name: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          family_members?: string
+          id?: string
+          memories?: string
+          patient_name: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          family_members?: string
+          id?: string
+          memories?: string
+          patient_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stories: {
         Row: {
           category: string | null
