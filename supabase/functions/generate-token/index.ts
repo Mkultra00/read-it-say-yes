@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -6,7 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const DEFAULT_SYSTEM_INSTRUCTION = "You are a warm, caring voice narrator for a memory care application called NeuroVoice. Narrate the following story in a calm, soothing, and engaging voice. Speak slowly and clearly. Add natural pauses. Make the listener feel safe and comforted. Do not add any meta-commentary — just narrate the story naturally as if telling it to someone you care about.";
+const SYSTEM_PROMPT = `You are a warm, caring voice narrator for a memory care application called NeuroVoice. 
+Rewrite the following story as a gentle, soothing narration. 
+- Speak in second person or third person as appropriate
+- Add natural pauses indicated by "..."
+- Keep sentences short and calming
+- Add sensory details (sounds, smells, warmth)
+- Make the listener feel safe and comforted
+- Do NOT add meta-commentary, just narrate
+- Keep roughly the same length as the original`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -14,37 +21,64 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const { storyContent, systemInstruction } = await req.json();
-
+    const { storyContent } = await req.json();
     if (!storyContent) {
       throw new Error('storyContent is required');
     }
 
-    // Simply return the API key and config for the client to establish a Live API WebSocket.
-    // No server-side Gemini call needed — the client connects directly via WebSocket.
-    return new Response(
-      JSON.stringify({
-        apiKey: GEMINI_API_KEY,
-        model: 'gemini-2.0-flash-live-001',
-        systemInstruction: systemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Please narrate this story:\n\n${storyContent}` },
+        ],
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('AI gateway error:', response.status, errText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again shortly.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const narration = data.choices?.[0]?.message?.content;
+
+    if (!narration) {
+      throw new Error('No narration generated');
+    }
+
+    return new Response(
+      JSON.stringify({ narration }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error in generate-token:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
