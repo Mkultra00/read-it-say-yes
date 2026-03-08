@@ -5,8 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SYSTEM_PROMPT = `You are a warm, caring voice narrator for a memory care application called NeuroVoice. 
-Rewrite the following story as a gentle, soothing narration. 
+const LANGUAGE_MAP: Record<string, string> = {
+  english: "English",
+  mandarin: "Mandarin Chinese (简体中文)",
+  "spanish-mx": "Mexican Spanish (Español de México)",
+  hindi: "Hindi (हिन्दी)",
+};
+
+function getSystemPrompt(language: string) {
+  const langName = LANGUAGE_MAP[language] || "English";
+  return `You are a warm, caring voice narrator for a memory care application called NeuroVoice. 
+Rewrite the following story as a gentle, soothing narration.
+- IMPORTANT: Write the entire narration in ${langName}. Every word must be in ${langName}.
 - Speak in second person or third person as appropriate
 - Add natural pauses indicated by "..."
 - Keep sentences short and calming
@@ -14,6 +24,7 @@ Rewrite the following story as a gentle, soothing narration.
 - Make the listener feel safe and comforted
 - Do NOT add meta-commentary, just narrate
 - Keep roughly the same length as the original`;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,10 +37,12 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const { storyContent } = await req.json();
+    const { storyContent, language } = await req.json();
     if (!storyContent) {
       throw new Error('storyContent is required');
     }
+
+    const systemPrompt = getSystemPrompt(language || 'english');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -40,7 +53,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please narrate this story:\n\n${storyContent}` },
         ],
       }),

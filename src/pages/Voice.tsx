@@ -14,7 +14,7 @@ import { Mic, Square, Loader2, Volume2, FlaskConical } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useVoiceStore, VOICE_OPTIONS } from "@/hooks/useVoiceStore";
+import { useVoiceStore, VOICE_OPTIONS, LANGUAGE_OPTIONS } from "@/hooks/useVoiceStore";
 import { toast } from "sonner";
 
 const TEST_STORY = `Once upon a time, in a cozy little house by the sea, there lived a kind old woman named Rose. Every morning she would walk along the shore, collecting smooth stones and listening to the waves. The seagulls knew her well and would circle above, calling out their greetings. One day, she found a beautiful shell that sang a gentle melody when held to her ear. She carried it home and placed it on her windowsill, where it hummed softly through the night, filling her dreams with warmth and peace.`;
@@ -26,8 +26,9 @@ const Voice = () => {
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
   const [transcript, setTranscript] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { selectedVoiceId } = useVoiceStore();
+  const { selectedVoiceId, selectedLanguageId } = useVoiceStore();
   const selectedVoice = VOICE_OPTIONS.find((v) => v.id === selectedVoiceId);
+  const selectedLanguage = LANGUAGE_OPTIONS.find((l) => l.id === selectedLanguageId);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
   const storyContent = testMode ? TEST_STORY : selectedStory?.content;
@@ -45,7 +46,7 @@ const Voice = () => {
       // First, get AI-enhanced narration text from Gemini
       const { data: narrationData, error: narrationError } = await supabase.functions.invoke(
         "generate-token",
-        { body: { storyContent } }
+        { body: { storyContent, language: selectedLanguageId } }
       );
 
       if (narrationError) throw new Error(narrationError.message || "Failed to generate narration");
@@ -98,7 +99,7 @@ const Voice = () => {
       setStatus("error");
       toast.error(e.message || "Failed to generate narration");
     }
-  }, [storyContent, selectedVoiceId]);
+  }, [storyContent, selectedVoiceId, selectedLanguageId]);
 
   const stopSession = useCallback(() => {
     if (audioRef.current) {
@@ -133,11 +134,18 @@ const Voice = () => {
 
         <div className="text-center">
           <h2 className="font-serif text-xl text-foreground">Voice Session</h2>
-          {selectedVoice && (
-            <p className="text-xs text-primary font-medium mt-0.5">
-              Voice: {selectedVoice.name}
-            </p>
-          )}
+          <div className="flex items-center justify-center gap-2 mt-0.5">
+            {selectedVoice && (
+              <p className="text-xs text-primary font-medium">
+                Voice: {selectedVoice.name}
+              </p>
+            )}
+            {selectedLanguage && (
+              <p className="text-xs text-muted-foreground">
+                {selectedLanguage.flag} {selectedLanguage.name}
+              </p>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {status === "idle" && (testMode ? "Test mode — AI narration with realistic voice" : "Select a story and start narration")}
             {status === "generating" && "Crafting your narration..."}

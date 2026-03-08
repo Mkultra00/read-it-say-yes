@@ -6,6 +6,12 @@ export interface VoiceOption {
   description: string;
 }
 
+export interface LanguageOption {
+  id: string;
+  name: string;
+  flag: string;
+}
+
 export const VOICE_OPTIONS: VoiceOption[] = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Warm & gentle female" },
   { id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura", description: "Calm & soothing female" },
@@ -17,7 +23,15 @@ export const VOICE_OPTIONS: VoiceOption[] = [
   { id: "nPczCjzI2devNBz1zQrb", name: "Brian", description: "Kind & comforting male" },
 ];
 
+export const LANGUAGE_OPTIONS: LanguageOption[] = [
+  { id: "english", name: "English", flag: "🇺🇸" },
+  { id: "mandarin", name: "中文 (Mandarin)", flag: "🇨🇳" },
+  { id: "spanish-mx", name: "Español (México)", flag: "🇲🇽" },
+  { id: "hindi", name: "हिन्दी (Hindi)", flag: "🇮🇳" },
+];
+
 const STORAGE_KEY = "neurovoice-selected-voice";
+const LANG_STORAGE_KEY = "neurovoice-selected-language";
 
 function getStoredVoice(): string {
   try {
@@ -27,9 +41,19 @@ function getStoredVoice(): string {
   }
 }
 
+function getStoredLanguage(): string {
+  try {
+    return localStorage.getItem(LANG_STORAGE_KEY) || "english";
+  } catch {
+    return "english";
+  }
+}
+
 interface VoiceStore {
   selectedVoiceId: string;
   setSelectedVoiceId: (id: string) => void;
+  selectedLanguageId: string;
+  setSelectedLanguageId: (id: string) => void;
 }
 
 export const useVoiceStore = create<VoiceStore>((set) => ({
@@ -37,5 +61,10 @@ export const useVoiceStore = create<VoiceStore>((set) => ({
   setSelectedVoiceId: (id: string) => {
     localStorage.setItem(STORAGE_KEY, id);
     set({ selectedVoiceId: id });
+  },
+  selectedLanguageId: getStoredLanguage(),
+  setSelectedLanguageId: (id: string) => {
+    localStorage.setItem(LANG_STORAGE_KEY, id);
+    set({ selectedLanguageId: id });
   },
 }));
