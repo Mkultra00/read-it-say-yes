@@ -26,6 +26,8 @@ const Voice = () => {
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
   const [transcript, setTranscript] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { selectedVoiceId } = useVoiceStore();
+  const selectedVoice = VOICE_OPTIONS.find((v) => v.id === selectedVoiceId);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
   const storyContent = testMode ? TEST_STORY : selectedStory?.content;
