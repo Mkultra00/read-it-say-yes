@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStories } from "@/hooks/useStories";
+import { usePatientProfile } from "@/hooks/usePatientProfile";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
