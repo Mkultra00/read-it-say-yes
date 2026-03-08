@@ -65,7 +65,7 @@ const Voice = () => {
         },
         body: JSON.stringify({
           text: narrationText,
-          voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah
+          voiceId: selectedVoiceId,
         }),
       });
 
