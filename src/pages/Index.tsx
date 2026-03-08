@@ -43,6 +43,9 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Patient Context & Story Generation */}
+        <PatientContextForm />
+
         {/* Voice Settings */}
         <VoiceSettings />
 
