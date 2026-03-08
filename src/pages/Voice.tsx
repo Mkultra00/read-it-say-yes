@@ -46,7 +46,7 @@ const Voice = () => {
       // First, get AI-enhanced narration text from Gemini
       const { data: narrationData, error: narrationError } = await supabase.functions.invoke(
         "generate-token",
-        { body: { storyContent } }
+        { body: { storyContent, language: selectedLanguageId } }
       );
 
       if (narrationError) throw new Error(narrationError.message || "Failed to generate narration");
