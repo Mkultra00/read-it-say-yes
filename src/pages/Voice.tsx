@@ -22,6 +22,7 @@ const TEST_STORY = `Once upon a time, in a cozy little house by the sea, there l
 
 const Voice = () => {
   const { stories, isLoading } = useStories();
+  const { profile } = usePatientProfile();
   const [selectedStoryId, setSelectedStoryId] = useState<string>("");
   const [testMode, setTestMode] = useState(true);
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
