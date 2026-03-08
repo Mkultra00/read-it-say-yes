@@ -37,10 +37,12 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const { storyContent } = await req.json();
+    const { storyContent, language } = await req.json();
     if (!storyContent) {
       throw new Error('storyContent is required');
     }
+
+    const systemPrompt = getSystemPrompt(language || 'english');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -51,7 +53,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please narrate this story:\n\n${storyContent}` },
         ],
       }),
