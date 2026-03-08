@@ -1,37 +1,60 @@
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStories } from "@/hooks/useStories";
+import { useStories, Story } from "@/hooks/useStories";
 import { StoryCard } from "@/components/StoryCard";
 import { StoryForm } from "@/components/StoryForm";
 import { Button } from "@/components/ui/button";
-import { Story } from "@/types/story";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const Stories = () => {
-  const { stories, addStory, updateStory, deleteStory } = useStories();
+  const { stories, isLoading, addStory, updateStory, deleteStory } = useStories();
   const [editing, setEditing] = useState<Story | null>(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
-  const handleCreate = (data: Omit<Story, "id" | "created_at">) => {
-    addStory(data);
-    setCreating(false);
-    toast.success("Story added!");
-  };
-
-  const handleUpdate = (data: Omit<Story, "id" | "created_at">) => {
-    if (editing) {
-      updateStory(editing.id, data);
-      setEditing(null);
-      toast.success("Story updated!");
+  const handleCreate = async (data: {
+    title: string;
+    content: string;
+    category?: string | null;
+    loop_enabled: boolean;
+    schedule_time?: string | null;
+  }) => {
+    try {
+      await addStory(data);
+      setCreating(false);
+      toast.success("Story added!");
+    } catch {
+      toast.error("Failed to add story");
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteStory(id);
-    toast.success("Story deleted.");
+  const handleUpdate = async (data: {
+    title: string;
+    content: string;
+    category?: string | null;
+    loop_enabled: boolean;
+    schedule_time?: string | null;
+  }) => {
+    if (editing) {
+      try {
+        await updateStory({ id: editing.id, ...data });
+        setEditing(null);
+        toast.success("Story updated!");
+      } catch {
+        toast.error("Failed to update story");
+      }
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteStory(id);
+      toast.success("Story deleted.");
+    } catch {
+      toast.error("Failed to delete story");
+    }
   };
 
   const showForm = creating || editing;
@@ -61,7 +84,11 @@ const Stories = () => {
           />
         )}
 
-        {stories.length === 0 && !showForm ? (
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : stories.length === 0 && !showForm ? (
           <div className="rounded-xl border border-dashed border-border p-12 text-center">
             <p className="text-muted-foreground">
               No stories yet. Tap "New Story" to get started.

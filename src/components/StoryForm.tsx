@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Story } from "@/types/story";
+import { Story } from "@/hooks/useStories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,13 @@ import { X } from "lucide-react";
 
 interface StoryFormProps {
   initial?: Story;
-  onSubmit: (data: Omit<Story, "id" | "created_at">) => void;
+  onSubmit: (data: {
+    title: string;
+    content: string;
+    category?: string | null;
+    loop_enabled: boolean;
+    schedule_time?: string | null;
+  }) => void;
   onCancel: () => void;
 }
 
@@ -26,9 +32,9 @@ export function StoryForm({ initial, onSubmit, onCancel }: StoryFormProps) {
     onSubmit({
       title,
       content,
-      category: category || undefined,
+      category: category || null,
       loop_enabled: loopEnabled,
-      schedule_time: scheduleTime || undefined,
+      schedule_time: scheduleTime || null,
     });
   };
 
