@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStories } from "@/hooks/useStories";
+import { usePatientProfile } from "@/hooks/usePatientProfile";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -21,6 +22,7 @@ const TEST_STORY = `Once upon a time, in a cozy little house by the sea, there l
 
 const Voice = () => {
   const { stories, isLoading } = useStories();
+  const { profile } = usePatientProfile();
   const [selectedStoryId, setSelectedStoryId] = useState<string>("");
   const [testMode, setTestMode] = useState(true);
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
@@ -46,7 +48,7 @@ const Voice = () => {
       // First, get AI-enhanced narration text from Gemini
       const { data: narrationData, error: narrationError } = await supabase.functions.invoke(
         "generate-token",
-        { body: { storyContent, language: selectedLanguageId } }
+        { body: { storyContent, language: selectedLanguageId, patientName: profile?.patient_name } }
       );
 
       if (narrationError) throw new Error(narrationError.message || "Failed to generate narration");
@@ -99,7 +101,7 @@ const Voice = () => {
       setStatus("error");
       toast.error(e.message || "Failed to generate narration");
     }
-  }, [storyContent, selectedVoiceId, selectedLanguageId]);
+  }, [storyContent, selectedVoiceId, selectedLanguageId, profile?.patient_name]);
 
   const stopSession = useCallback(() => {
     if (audioRef.current) {
