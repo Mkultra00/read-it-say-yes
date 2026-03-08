@@ -1,4 +1,4 @@
-import { Story } from "@/types/story";
+import { Story } from "@/hooks/useStories";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

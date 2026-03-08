@@ -1,50 +1,66 @@
-import { useState, useCallback } from "react";
-import { Story } from "@/types/story";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-const SAMPLE_STORIES: Story[] = [
-  {
-    id: "1",
-    title: "Morning Garden Walk",
-    content:
-      "Imagine walking through a sunlit garden in the early morning. The dew glistens on rose petals. A gentle breeze carries the scent of lavender. Birds sing their morning songs from the old oak tree. You follow a winding stone path past beds of marigolds and daisies, feeling the cool grass beneath your feet.",
-    category: "Relaxation",
-    loop_enabled: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "Childhood Kitchen Memories",
-    content:
-      "Remember the warmth of grandmother's kitchen. The smell of freshly baked bread fills the air. Flour dusts the wooden countertop. A pot of soup simmers on the stove, filling the room with savory aromas. The old radio plays a familiar tune while sunlight streams through lace curtains.",
-    category: "Memory",
-    loop_enabled: true,
-    schedule_time: "09:00",
-    created_at: new Date().toISOString(),
-  },
-];
+export type Story = Tables<"stories">;
+type StoryInsert = TablesInsert<"stories">;
+type StoryUpdate = TablesUpdate<"stories">;
 
 export function useStories() {
-  const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
+  const queryClient = useQueryClient();
 
-  const addStory = useCallback((story: Omit<Story, "id" | "created_at">) => {
-    const newStory: Story = {
-      ...story,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-    };
-    setStories((prev) => [newStory, ...prev]);
-    return newStory;
-  }, []);
+  const { data: stories = [], isLoading } = useQuery({
+    queryKey: ["stories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stories")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const updateStory = useCallback((id: string, updates: Partial<Story>) => {
-    setStories((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
-  }, []);
+  const addMutation = useMutation({
+    mutationFn: async (story: StoryInsert) => {
+      const { data, error } = await supabase
+        .from("stories")
+        .insert(story)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stories"] }),
+  });
 
-  const deleteStory = useCallback((id: string) => {
-    setStories((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: StoryUpdate & { id: string }) => {
+      const { data, error } = await supabase
+        .from("stories")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stories"] }),
+  });
 
-  return { stories, addStory, updateStory, deleteStory };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("stories").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stories"] }),
+  });
+
+  return {
+    stories,
+    isLoading,
+    addStory: addMutation.mutateAsync,
+    updateStory: updateMutation.mutateAsync,
+    deleteStory: deleteMutation.mutateAsync,
+  };
 }
