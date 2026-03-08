@@ -4,6 +4,8 @@
 
 Voice of Love helps caregivers create personalized, comforting stories for patients with memory conditions. By combining patient context — names, family members, cherished memories, and familiar places — with generative AI, the app produces warm narrations that can soothe, engage, and spark recognition.
 
+![Voice of Love App Screenshot](public/images/app-screenshot.png)
+
 ---
 
 ## 🎯 Use Case
