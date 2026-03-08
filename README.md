@@ -1,5 +1,12 @@
 # Welcome to your Lovable project
 
+## Team Members
+
+- Frank Yu
+- Forrest Pan
+- Wun Kuen Ng
+- Jin Thakur
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
