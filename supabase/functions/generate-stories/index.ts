@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SYSTEM_PROMPT = `You are a creative writer for NeuroVoice, a memory care application. 
+const SYSTEM_PROMPT = `You are a creative writer for Voice of Love, a memory care application. 
 You generate warm, comforting, and vivid stories for patients with memory conditions.
 
 Given patient context (name, family members, city, and important memories/objects), generate exactly 5 unique stories.

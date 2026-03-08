@@ -16,7 +16,7 @@ const Index = () => {
       <div className="space-y-6">
         {/* Hero */}
         <div className="rounded-2xl bg-primary p-6 text-primary-foreground">
-          <h2 className="font-serif text-2xl">Welcome to NeuroVoice</h2>
+          <h2 className="font-serif text-2xl">Welcome to Voice of Love</h2>
           <p className="mt-2 text-sm opacity-80">
             Create stories and topics, then let the AI voice agent narrate them
             for you in a warm, calming voice.

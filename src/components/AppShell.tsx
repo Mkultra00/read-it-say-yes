@@ -7,7 +7,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
           <h1 className="text-xl font-serif tracking-tight text-primary">
-            NeuroVoice
+            Voice of Love
           </h1>
         </div>
       </header>
