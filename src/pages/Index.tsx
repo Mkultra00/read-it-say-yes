@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { useStories } from "@/hooks/useStories";
 import { StoryCard } from "@/components/StoryCard";
+import { VoiceSettings } from "@/components/VoiceSettings";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mic, Plus, Loader2 } from "lucide-react";
 
@@ -40,6 +41,9 @@ const Index = () => {
             </Button>
           </div>
         </div>
+
+        {/* Voice Settings */}
+        <VoiceSettings />
 
         {/* Recent Stories */}
         <div>
