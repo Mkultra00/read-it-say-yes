@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStories, Story } from "@/hooks/useStories";
+import { useStories } from "@/hooks/useStories";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -10,240 +10,92 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mic, Square, Loader2, Volume2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Mic, Square, Loader2, Volume2, FlaskConical } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+
+const TEST_STORY = `Once upon a time, in a cozy little house by the sea, there lived a kind old woman named Rose. Every morning she would walk along the shore, collecting smooth stones and listening to the waves. The seagulls knew her well and would circle above, calling out their greetings. One day, she found a beautiful shell that sang a gentle melody when held to her ear. She carried it home and placed it on her windowsill, where it hummed softly through the night, filling her dreams with warmth and peace.`;
 
 const Voice = () => {
   const { stories, isLoading } = useStories();
   const [selectedStoryId, setSelectedStoryId] = useState<string>("");
-  const [status, setStatus] = useState<
-    "idle" | "connecting" | "playing" | "error"
-  >("idle");
+  const [testMode, setTestMode] = useState(true);
+  const [status, setStatus] = useState<"idle" | "connecting" | "playing" | "error">("idle");
   const [transcript, setTranscript] = useState("");
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef(0);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
+  const storyContent = testMode ? TEST_STORY : selectedStory?.content;
 
-  const log = useCallback((msg: string) => {
-    console.log(`[NeuroVoice] ${msg}`);
-    setDebugLog((prev) => [...prev.slice(-19), msg]);
-  }, []);
-
-  const playPcmChunk = useCallback(
-    (pcmBytes: ArrayBuffer) => {
-      const ctx = audioContextRef.current;
-      if (!ctx) return;
-
-      try {
-        const int16 = new Int16Array(pcmBytes);
-        const float32 = new Float32Array(int16.length);
-        for (let i = 0; i < int16.length; i++) {
-          float32[i] = int16[i] / 32768;
-        }
-
-        const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
-        audioBuffer.copyToChannel(float32, 0);
-
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-
-        const now = ctx.currentTime;
-        const startTime = Math.max(now, nextStartTimeRef.current);
-        source.start(startTime);
-        nextStartTimeRef.current = startTime + audioBuffer.duration;
-      } catch (e) {
-        log(`Audio error: ${e}`);
-      }
-    },
-    [log]
-  );
-
-  const startSession = useCallback(async () => {
-    if (!selectedStory) {
-      toast.error("Please select a story first");
+  const startTTS = useCallback(() => {
+    if (!storyContent) {
+      toast.error("No story content to narrate");
       return;
     }
 
     setStatus("connecting");
     setTranscript("");
-    setDebugLog([]);
-    nextStartTimeRef.current = 0;
 
-    // Create AudioContext immediately in user gesture context
-    try {
-      const ctx = new AudioContext({ sampleRate: 24000 });
-      await ctx.resume();
-      audioContextRef.current = ctx;
-      log("AudioContext created and resumed");
-    } catch (e) {
-      log(`AudioContext error: ${e}`);
-      setStatus("error");
-      return;
-    }
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
 
-    try {
-      log("Fetching session config...");
-      const { data, error } = await supabase.functions.invoke(
-        "generate-token",
-        {
-          body: { storyContent: selectedStory.content },
-        }
-      );
+    const utterance = new SpeechSynthesisUtterance(storyContent);
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
-      if (error || !data?.apiKey) {
-        throw new Error(error?.message || "Failed to get session config");
+    // Try to pick a nice voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(
+      (v) => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Female")
+    );
+    if (preferred) utterance.voice = preferred;
+
+    let spokenSoFar = "";
+    const words = storyContent.split(" ");
+    let wordIndex = 0;
+
+    utterance.onstart = () => {
+      setStatus("playing");
+    };
+
+    utterance.onboundary = (e) => {
+      if (e.name === "word" && wordIndex < words.length) {
+        spokenSoFar += (wordIndex > 0 ? " " : "") + words[wordIndex];
+        wordIndex++;
+        setTranscript(spokenSoFar);
       }
+    };
 
-      log(`Got config, model: ${data.model}`);
+    utterance.onend = () => {
+      setTranscript(storyContent);
+      setStatus("idle");
+      toast.success("Narration complete!");
+    };
 
-      // Connect to Gemini Live API
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${data.apiKey}`;
-      log("Connecting WebSocket...");
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        log("WebSocket connected, sending setup...");
-        const setupMsg = {
-          setup: {
-            model: `models/${data.model}`,
-            generationConfig: {
-              responseModalities: ["AUDIO", "TEXT"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: {
-                    voiceName: "Aoede",
-                  },
-                },
-              },
-            },
-            systemInstruction: {
-              parts: [{ text: data.systemInstruction }],
-            },
-          },
-        };
-        ws.send(JSON.stringify(setupMsg));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data as string);
-
-          if (msg.setupComplete) {
-            log("Setup complete! Sending story to narrate...");
-            setStatus("playing");
-            ws.send(
-              JSON.stringify({
-                clientContent: {
-                  turns: [
-                    {
-                      role: "user",
-                      parts: [
-                        {
-                          text: `Please narrate this story now: ${selectedStory.content}`,
-                        },
-                      ],
-                    },
-                  ],
-                  turnComplete: true,
-                },
-              })
-            );
-          }
-
-          if (msg.serverContent) {
-            const parts = msg.serverContent?.modelTurn?.parts || [];
-            for (const part of parts) {
-              if (part.inlineData?.data) {
-                // Decode base64 PCM audio
-                const binaryStr = atob(part.inlineData.data);
-                const bytes = new Uint8Array(binaryStr.length);
-                for (let i = 0; i < binaryStr.length; i++) {
-                  bytes[i] = binaryStr.charCodeAt(i);
-                }
-                playPcmChunk(bytes.buffer);
-              }
-              if (part.text) {
-                setTranscript((prev) => prev + part.text);
-              }
-            }
-
-            if (msg.serverContent?.turnComplete) {
-              log("Narration turn complete");
-              if (selectedStory.loop_enabled) {
-                log("Loop enabled, restarting in 3s...");
-                setTimeout(() => {
-                  if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    setTranscript("");
-                    nextStartTimeRef.current = 0;
-                    wsRef.current.send(
-                      JSON.stringify({
-                        clientContent: {
-                          turns: [
-                            {
-                              role: "user",
-                              parts: [
-                                {
-                                  text: `Please narrate this story again with slight variations: ${selectedStory.content}`,
-                                },
-                              ],
-                            },
-                          ],
-                          turnComplete: true,
-                        },
-                      })
-                    );
-                  }
-                }, 3000);
-              }
-            }
-          }
-        } catch (e) {
-          log(`Message parse error: ${e}`);
-        }
-      };
-
-      ws.onerror = (e) => {
-        log(`WebSocket error: ${JSON.stringify(e)}`);
+    utterance.onerror = (e) => {
+      if (e.error !== "canceled") {
         setStatus("error");
-        toast.error("Connection error. Please try again.");
-      };
+        toast.error(`Speech error: ${e.error}`);
+      }
+    };
 
-      ws.onclose = (e) => {
-        log(`WebSocket closed: code=${e.code} reason=${e.reason}`);
-        setStatus((prev) => (prev === "playing" ? "idle" : prev));
-      };
-    } catch (e: any) {
-      log(`Session error: ${e.message}`);
-      setStatus("error");
-      toast.error(e.message || "Failed to start voice session");
-    }
-  }, [selectedStory, playPcmChunk, log]);
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [storyContent]);
 
   const stopSession = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    nextStartTimeRef.current = 0;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
     setStatus("idle");
-    log("Session stopped");
-  }, [log]);
+  }, []);
 
   useEffect(() => {
+    // Load voices
+    window.speechSynthesis.getVoices();
     return () => {
-      wsRef.current?.close();
-      audioContextRef.current?.close();
+      window.speechSynthesis.cancel();
     };
   }, []);
 
@@ -267,36 +119,46 @@ const Voice = () => {
         <div className="text-center">
           <h2 className="font-serif text-xl text-foreground">Voice Session</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {status === "idle" && "Select a story and start narration"}
-            {status === "connecting" && "Connecting to voice agent..."}
+            {status === "idle" && (testMode ? "Test mode — uses browser speech" : "Select a story and start narration")}
+            {status === "connecting" && "Starting narration..."}
             {status === "playing" && "Narrating your story..."}
             {status === "error" && "Something went wrong. Try again."}
           </p>
         </div>
 
-        {/* Story selector */}
-        <div className="w-full max-w-sm">
-          <Select
-            value={selectedStoryId}
-            onValueChange={setSelectedStoryId}
+        {/* Test mode toggle */}
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="test-mode" className="text-sm">Test Mode</Label>
+          <Switch
+            id="test-mode"
+            checked={testMode}
+            onCheckedChange={setTestMode}
             disabled={status !== "idle"}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoading ? "Loading stories..." : "Select a story"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {stories.map((story) => (
-                <SelectItem key={story.id} value={story.id}>
-                  {story.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
+
+        {/* Story selector (hidden in test mode) */}
+        {!testMode && (
+          <div className="w-full max-w-sm">
+            <Select
+              value={selectedStoryId}
+              onValueChange={setSelectedStoryId}
+              disabled={status !== "idle"}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={isLoading ? "Loading stories..." : "Select a story"} />
+              </SelectTrigger>
+              <SelectContent>
+                {stories.map((story) => (
+                  <SelectItem key={story.id} value={story.id}>
+                    {story.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Controls */}
         <div className="flex gap-3">
@@ -304,19 +166,14 @@ const Voice = () => {
             <Button
               size="lg"
               className="gap-2"
-              onClick={startSession}
-              disabled={!selectedStoryId || isLoading}
+              onClick={startTTS}
+              disabled={!testMode && (!selectedStoryId || isLoading)}
             >
               <Mic className="h-5 w-5" />
-              Start Narration
+              {testMode ? "Play Test Story" : "Start Narration"}
             </Button>
           ) : (
-            <Button
-              size="lg"
-              variant="destructive"
-              className="gap-2"
-              onClick={stopSession}
-            >
+            <Button size="lg" variant="destructive" className="gap-2" onClick={stopSession}>
               <Square className="h-5 w-5" />
               Stop
             </Button>
@@ -329,26 +186,15 @@ const Voice = () => {
             <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
               Transcript
             </h3>
-            <p className="text-sm leading-relaxed text-foreground">
-              {transcript}
-            </p>
+            <p className="text-sm leading-relaxed text-foreground">{transcript}</p>
           </Card>
         )}
 
-        {/* Debug log */}
-        {debugLog.length > 0 && (
-          <Card className="w-full max-w-sm p-4">
-            <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
-              Debug Log
-            </h3>
-            <div className="max-h-40 overflow-y-auto">
-              {debugLog.map((msg, i) => (
-                <p key={i} className="text-xs text-muted-foreground font-mono">
-                  {msg}
-                </p>
-              ))}
-            </div>
-          </Card>
+        {/* Test mode info */}
+        {testMode && status === "idle" && (
+          <p className="max-w-sm text-center text-xs text-muted-foreground">
+            Test mode uses your browser's built-in speech synthesis. Turn off test mode to use your saved stories.
+          </p>
         )}
       </div>
     </AppShell>
