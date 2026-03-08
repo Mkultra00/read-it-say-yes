@@ -41,12 +41,12 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const { storyContent, language } = await req.json();
+    const { storyContent, language, patientName } = await req.json();
     if (!storyContent) {
       throw new Error('storyContent is required');
     }
 
-    const systemPrompt = getSystemPrompt(language || 'english');
+    const systemPrompt = getSystemPrompt(language || 'english', patientName);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

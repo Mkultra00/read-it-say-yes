@@ -101,7 +101,7 @@ const Voice = () => {
       setStatus("error");
       toast.error(e.message || "Failed to generate narration");
     }
-  }, [storyContent, selectedVoiceId, selectedLanguageId]);
+  }, [storyContent, selectedVoiceId, selectedLanguageId, profile?.patient_name]);
 
   const stopSession = useCallback(() => {
     if (audioRef.current) {
