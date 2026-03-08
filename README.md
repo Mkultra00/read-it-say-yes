@@ -36,8 +36,8 @@ Dementia and memory-care patients often find comfort in familiar stories, voices
 ## 🛠 Tech Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
-- **Backend:** Lovable Cloud (Supabase) — database, edge functions, storage
-- **AI Story Generation:** Google Gemini 2.5 Flash via Lovable AI Gateway
+- **Backend:** Supabase — database, edge functions, storage
+- **AI Story Generation:** Google Gemini 2.5 Flash
 - **Text-to-Speech:** ElevenLabs Multilingual v2
 - **State Management:** Zustand, TanStack React Query
 
