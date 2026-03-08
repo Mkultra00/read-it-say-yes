@@ -1,0 +1,110 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+const LANGUAGE_MAP: Record<string, string> = {
+  english: "English",
+  mandarin: "Mandarin Chinese (简体中文)",
+  "spanish-mx": "Mexican Spanish (Español de México)",
+  hindi: "Hindi (हिन्दी)",
+};
+
+const THEMES = [
+  "a warm childhood memory",
+  "a family gathering or celebration",
+  "a peaceful moment in nature",
+  "a comforting daily routine",
+  "a special holiday or birthday",
+  "a walk through a familiar neighborhood",
+  "cooking or sharing a favorite meal",
+  "a moment with a beloved pet",
+  "a rainy day spent indoors with loved ones",
+  "a trip to a favorite place",
+];
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+    const { patientName, familyMembers, city, memories, language, previousTitles } = await req.json();
+    if (!patientName) throw new Error('patientName is required');
+
+    const langName = LANGUAGE_MAP[language] || "English";
+    const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    const avoidList = previousTitles?.length
+      ? `\nDo NOT repeat these story themes or titles: ${previousTitles.join(", ")}`
+      : "";
+
+    const systemPrompt = `You are a creative, warm storyteller for a memory care application.
+Write ONE unique, comforting story (150-250 words) in ${langName}.
+The story should be about: ${theme}.
+
+Rules:
+- Write entirely in ${langName}
+- Address the patient "${patientName}" directly by name, using "you" (second person)
+- Use ${patientName}'s name at least 3 times naturally
+- Reference their real family, places, and memories naturally
+- Be warm, sensory-rich, calming, and vivid
+- Include sounds, smells, textures, and warmth
+- Do NOT add meta-commentary${avoidList}
+
+Return ONLY a JSON object with "title" and "content" fields. No markdown, no code blocks.`;
+
+    const userPrompt = `Patient: ${patientName}
+Family: ${familyMembers || 'Not specified'}
+City: ${city || 'Not specified'}
+Memories & objects: ${memories || 'Not specified'}`;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('AI gateway error:', response.status, errText);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again shortly.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const raw = data.choices?.[0]?.message?.content || "";
+
+    // Parse JSON from response, stripping markdown code blocks if present
+    const cleaned = raw.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+    const story = JSON.parse(cleaned);
+
+    return new Response(
+      JSON.stringify({ story: { title: story.title, content: story.content } }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in generate-single-story:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

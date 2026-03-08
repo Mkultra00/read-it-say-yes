@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-stories]
 verify_jwt = false
+
+[functions.generate-single-story]
+verify_jwt = false
