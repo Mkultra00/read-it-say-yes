@@ -24,7 +24,7 @@ const Voice = () => {
   const [testMode, setTestMode] = useState(true);
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
   const [transcript, setTranscript] = useState("");
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
   const storyContent = testMode ? TEST_STORY : selectedStory?.content;
@@ -37,48 +37,59 @@ const Voice = () => {
 
     setStatus("generating");
     setTranscript("");
-    window.speechSynthesis.cancel();
 
     try {
-      // Call Gemini via edge function to generate enhanced narration
-      const { data, error } = await supabase.functions.invoke("generate-token", {
-        body: { storyContent },
+      // First, get AI-enhanced narration text from Gemini
+      const { data: narrationData, error: narrationError } = await supabase.functions.invoke(
+        "generate-token",
+        { body: { storyContent } }
+      );
+
+      if (narrationError) throw new Error(narrationError.message || "Failed to generate narration");
+      if (narrationData?.error) throw new Error(narrationData.error);
+
+      const narrationText = narrationData?.narration || storyContent;
+      setTranscript(narrationText);
+
+      // Then, convert to realistic speech via ElevenLabs
+      const ttsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`;
+      const response = await fetch(ttsUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          text: narrationText,
+          voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah
+        }),
       });
 
-      if (error) throw new Error(error.message || "Failed to generate narration");
-      if (data?.error) throw new Error(data.error);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `TTS failed: ${response.status}`);
+      }
 
-      const narration = data.narration;
-      if (!narration) throw new Error("No narration returned");
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
 
-      setTranscript(narration);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-      // Play narration with browser TTS
-      const utterance = new SpeechSynthesisUtterance(narration);
-      utterance.rate = 0.85;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-
-      const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(
-        (v) => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Female")
-      );
-      if (preferred) utterance.voice = preferred;
-
-      utterance.onstart = () => setStatus("playing");
-      utterance.onend = () => {
+      audio.onplay = () => setStatus("playing");
+      audio.onended = () => {
         setStatus("idle");
+        URL.revokeObjectURL(audioUrl);
         toast.success("Narration complete!");
       };
-      utterance.onerror = (e) => {
-        if (e.error !== "canceled") {
-          setStatus("error");
-          toast.error(`Speech error: ${e.error}`);
-        }
+      audio.onerror = () => {
+        setStatus("error");
+        URL.revokeObjectURL(audioUrl);
+        toast.error("Audio playback error");
       };
 
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      await audio.play();
     } catch (e: any) {
       console.error("Narration error:", e);
       setStatus("error");
@@ -87,14 +98,17 @@ const Voice = () => {
   }, [storyContent]);
 
   const stopSession = useCallback(() => {
-    window.speechSynthesis.cancel();
-    utteranceRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setStatus("idle");
   }, []);
 
   useEffect(() => {
-    window.speechSynthesis.getVoices();
-    return () => { window.speechSynthesis.cancel(); };
+    return () => {
+      audioRef.current?.pause();
+    };
   }, []);
 
   return (
@@ -117,8 +131,8 @@ const Voice = () => {
         <div className="text-center">
           <h2 className="font-serif text-xl text-foreground">Voice Session</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {status === "idle" && (testMode ? "Test mode — AI-enhanced narration" : "Select a story and start narration")}
-            {status === "generating" && "Gemini is crafting your narration..."}
+            {status === "idle" && (testMode ? "Test mode — AI narration with realistic voice" : "Select a story and start narration")}
+            {status === "generating" && "Crafting your narration..."}
             {status === "playing" && "Narrating your story..."}
             {status === "error" && "Something went wrong. Try again."}
           </p>
@@ -164,6 +178,11 @@ const Voice = () => {
               <Mic className="h-5 w-5" />
               {testMode ? "Play Test Story" : "Start Narration"}
             </Button>
+          ) : status === "generating" ? (
+            <Button size="lg" disabled className="gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Generating...
+            </Button>
           ) : (
             <Button size="lg" variant="destructive" className="gap-2" onClick={stopSession}>
               <Square className="h-5 w-5" />
@@ -184,7 +203,7 @@ const Voice = () => {
 
         {testMode && status === "idle" && (
           <p className="max-w-sm text-center text-xs text-muted-foreground">
-            Gemini enhances your story into a warm narration, then plays it with browser speech. Turn off test mode to use your saved stories.
+            Gemini enhances your story, then ElevenLabs speaks it with a realistic voice. Turn off test mode to use your saved stories.
           </p>
         )}
       </div>
