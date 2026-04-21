@@ -31,9 +31,12 @@ const Voice = () => {
   const [status, setStatus] = useState<"idle" | "generating" | "playing" | "error">("idle");
   const [transcript, setTranscript] = useState("");
   const [storyCount, setStoryCount] = useState(0);
-  const narrationStore = useNarrationStore();
+  const setStoreAudio = useNarrationStore((s) => s.setAudio);
+  const setStopFn = useNarrationStore((s) => s.setStopFn);
+  const setNarrationActive = useNarrationStore((s) => s.setActive);
+  const sharedInfiniteRef = useNarrationStore((s) => s.infiniteActive);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const infiniteActiveRef = narrationStore.infiniteActive;
+  const infiniteActiveRef = sharedInfiniteRef;
   const previousTitlesRef = useRef<string[]>([]);
   const { selectedVoiceId, selectedLanguageId } = useVoiceStore();
   const selectedVoice = VOICE_OPTIONS.find((v) => v.id === selectedVoiceId);
