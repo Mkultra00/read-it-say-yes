@@ -192,6 +192,17 @@ const Voice = () => {
     toast.success("Narration stopped");
   }, []);
 
+  // Register stop fn globally + sync active state for header/home stop button
+  const setStopFn = useNarrationStore((s) => s.setStopFn);
+  const setNarrationActive = useNarrationStore((s) => s.setActive);
+  useEffect(() => {
+    setStopFn(stopSession);
+    return () => setStopFn(null);
+  }, [stopSession, setStopFn]);
+  useEffect(() => {
+    setNarrationActive(status === "playing" || status === "generating");
+  }, [status, setNarrationActive]);
+
   useEffect(() => {
     return () => {
       infiniteActiveRef.current = false;
