@@ -28,6 +28,7 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { id: "mandarin", name: "中文 (Mandarin)", flag: "🇨🇳" },
   { id: "spanish-mx", name: "Español (México)", flag: "🇲🇽" },
   { id: "hindi", name: "हिन्दी (Hindi)", flag: "🇮🇳" },
+  { id: "tagalog", name: "Tagalog", flag: "🇵🇭" },
 ];
 
 const STORAGE_KEY = "neurovoice-selected-voice";
