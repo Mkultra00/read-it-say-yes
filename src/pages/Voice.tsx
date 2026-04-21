@@ -181,9 +181,14 @@ const Voice = () => {
     infiniteActiveRef.current = false;
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = "";
       audioRef.current = null;
     }
+    previousTitlesRef.current = [];
+    setTranscript("");
+    setStoryCount(0);
     setStatus("idle");
+    toast.success("Narration stopped");
   }, []);
 
   useEffect(() => {
