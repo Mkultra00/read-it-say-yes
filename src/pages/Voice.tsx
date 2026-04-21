@@ -325,15 +325,10 @@ const Voice = () => {
                 </>
               )}
             </Button>
-          ) : status === "generating" ? (
-            <Button size="lg" variant="destructive" className="gap-2" onClick={stopSession}>
-              <Square className="h-5 w-5" />
-              Stop
-            </Button>
           ) : (
             <Button size="lg" variant="destructive" className="gap-2" onClick={stopSession}>
               <Square className="h-5 w-5" />
-              Stop
+              Stop & Clear
             </Button>
           )}
         </div>
