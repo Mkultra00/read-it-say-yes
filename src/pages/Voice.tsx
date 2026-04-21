@@ -114,6 +114,7 @@ const Voice = () => {
     try {
       const audio = await narrateText(storyContent);
       audioRef.current = audio;
+      narrationStore.setAudio(audio);
       audio.onended = () => {
         setStatus("idle");
         toast.success("Narration complete!");
@@ -153,6 +154,7 @@ const Voice = () => {
         }
 
         audioRef.current = audio;
+        narrationStore.setAudio(audio);
         setStoryCount((c) => c + 1);
 
         audio.onended = () => {
@@ -186,12 +188,13 @@ const Voice = () => {
       audioRef.current.src = "";
       audioRef.current = null;
     }
+    narrationStore.setAudio(null);
     previousTitlesRef.current = [];
     setTranscript("");
     setStoryCount(0);
     setStatus("idle");
     toast.success("Narration stopped");
-  }, []);
+  }, [narrationStore, infiniteActiveRef]);
 
   // Register stop fn globally + sync active state for header/home stop button
   const setStopFn = useNarrationStore((s) => s.setStopFn);
