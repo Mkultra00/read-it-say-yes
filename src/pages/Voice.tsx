@@ -117,7 +117,7 @@ const Voice = () => {
     try {
       const audio = await narrateText(storyContent);
       audioRef.current = audio;
-      narrationStore.setAudio(audio);
+      setStoreAudio(audio);
       audio.onended = () => {
         setStatus("idle");
         toast.success("Narration complete!");
@@ -157,7 +157,7 @@ const Voice = () => {
         }
 
         audioRef.current = audio;
-        narrationStore.setAudio(audio);
+        setStoreAudio(audio);
         setStoryCount((c) => c + 1);
 
         audio.onended = () => {
@@ -191,17 +191,15 @@ const Voice = () => {
       audioRef.current.src = "";
       audioRef.current = null;
     }
-    narrationStore.setAudio(null);
+    setStoreAudio(null);
     previousTitlesRef.current = [];
     setTranscript("");
     setStoryCount(0);
     setStatus("idle");
     toast.success("Narration stopped");
-  }, [narrationStore, infiniteActiveRef]);
+  }, [setStoreAudio, infiniteActiveRef]);
 
-  // Register stop fn globally + sync active state for header/home stop button
-  const setStopFn = useNarrationStore((s) => s.setStopFn);
-  const setNarrationActive = useNarrationStore((s) => s.setActive);
+  // Sync stop fn + active state to global store (selectors declared above)
   useEffect(() => {
     setStopFn(stopSession);
     return () => setStopFn(null);
