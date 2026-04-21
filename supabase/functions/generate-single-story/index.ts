@@ -94,8 +94,27 @@ Memories & objects: ${memories || 'Not specified'}`;
     const raw = data.choices?.[0]?.message?.content || "";
 
     // Parse JSON from response, stripping markdown code blocks if present
-    const cleaned = raw.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
-    const story = JSON.parse(cleaned);
+    let cleaned = raw.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+    // Extract the JSON object (in case of leading/trailing prose)
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+    }
+    // Escape raw control characters (newlines, tabs, etc.) inside string literals
+    // so JSON.parse doesn't choke on multi-line content from the model.
+    let story: { title: string; content: string };
+    try {
+      story = JSON.parse(cleaned);
+    } catch {
+      const sanitized = cleaned.replace(/[\u0000-\u001F]/g, (ch) => {
+        if (ch === "\n") return "\\n";
+        if (ch === "\r") return "\\r";
+        if (ch === "\t") return "\\t";
+        return "";
+      });
+      story = JSON.parse(sanitized);
+    }
 
     return new Response(
       JSON.stringify({ story: { title: story.title, content: story.content } }),
