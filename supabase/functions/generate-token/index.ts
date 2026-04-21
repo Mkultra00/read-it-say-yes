@@ -10,6 +10,7 @@ const LANGUAGE_MAP: Record<string, string> = {
   mandarin: "Mandarin Chinese (简体中文)",
   "spanish-mx": "Mexican Spanish (Español de México)",
   hindi: "Hindi (हिन्दी)",
+  tagalog: "Tagalog (Filipino)",
 };
 
 function getSystemPrompt(language: string, patientName?: string) {
