@@ -101,19 +101,51 @@ Memories & objects: ${memories || 'Not specified'}`;
     if (firstBrace !== -1 && lastBrace !== -1) {
       cleaned = cleaned.slice(firstBrace, lastBrace + 1);
     }
-    // Escape raw control characters (newlines, tabs, etc.) inside string literals
-    // so JSON.parse doesn't choke on multi-line content from the model.
+    // Escape raw control characters that appear INSIDE string literals only.
+    // Control chars outside strings (whitespace between tokens) are left alone.
     let story: { title: string; content: string };
     try {
       story = JSON.parse(cleaned);
-    } catch {
-      const sanitized = cleaned.replace(/[\u0000-\u001F]/g, (ch) => {
-        if (ch === "\n") return "\\n";
-        if (ch === "\r") return "\\r";
-        if (ch === "\t") return "\\t";
-        return "";
-      });
-      story = JSON.parse(sanitized);
+    } catch (e1) {
+      let inString = false;
+      let escape = false;
+      let out = "";
+      for (let i = 0; i < cleaned.length; i++) {
+        const ch = cleaned[i];
+        const code = ch.charCodeAt(0);
+        if (escape) {
+          out += ch;
+          escape = false;
+          continue;
+        }
+        if (ch === "\\" && inString) {
+          out += ch;
+          escape = true;
+          continue;
+        }
+        if (ch === '"') {
+          inString = !inString;
+          out += ch;
+          continue;
+        }
+        if (inString && code < 0x20) {
+          if (ch === "\n") out += "\\n";
+          else if (ch === "\r") out += "\\r";
+          else if (ch === "\t") out += "\\t";
+          else if (ch === "\b") out += "\\b";
+          else if (ch === "\f") out += "\\f";
+          else out += "\\u" + code.toString(16).padStart(4, "0");
+          continue;
+        }
+        out += ch;
+      }
+      try {
+        story = JSON.parse(out);
+      } catch (e2) {
+        console.error("JSON parse failed. Raw:", raw);
+        console.error("Cleaned:", cleaned);
+        throw new Error(`Failed to parse story JSON: ${(e2 as Error).message}`);
+      }
     }
 
     return new Response(
